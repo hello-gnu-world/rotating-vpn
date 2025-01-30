@@ -32,6 +32,68 @@ fi
 dir_create(){
 mkdir "$1";
 }
+
+#Defines function that requires the user to input a yes or no answer
+yesORno(){
+while [[ "${answer,,}" != "no" ]] && [[  "${answer,,}" != "yes" ]] ;
+do 
+        read -r answer
+        if [ "$(echo "$answer" | cut -b1)" == 'n' ];
+        then
+                answer='no';
+        else
+                answer='yes';
+        fi
+        if [[ "${answer,,}" != "no" ]] && [[  "${answer,,}" != "yes" ]];
+        then
+                echo -e "\nPlease enter 'yes' or 'no'."
+        fi
+done
+}
+
+install_dep(){
+error="$?";
+if [ "$error" == '1' ];
+then
+	echo "Package "$1" is required for this script to work. Would you like to download it?"
+	yesORno
+	if [ "$answer" == 'yes' ];
+	then
+		echo "Please input sudo password to update system and install packages."
+		case "$2" in
+			arch-based)
+				sudo pacman -Syyu "$1";
+				;;
+			debian-based)
+				sudo apt update; sudo apt upgrade; sudo apt install "$1";
+				;;
+		esac
+	else
+		echo "Required packages not installed. Exitting";
+		exit;
+	fi	
+fi
+}
+
+
+#Checks user's distribution type and whether or not they have require packages to run this script
+packageManager="$(apropos "package manager" | grep -o pacman | head -n1)";
+#Asks the user if they desire install required packages, and installs them if yes
+case "$packageManager" in
+	pacman)
+		pacman -Qi wireguard-tools > /dev/null 2>&1;
+		install_dep 'wireguard-tools' 'arch-based';
+		;;
+	dpkg)
+		dpkg -l wireguard-tools > /dev/null 2>&1
+		install_dep 'wireguard-tools' 'debian-based';
+		;;
+	*)
+		echo "This script currently only supports checking whether or not the propper package(s) are installed on debian and arch based systems. Ensure the proper packages are installed or else this script will not work!"
+		;;
+esac
+
+
 while getopts 'm:c:n:d:oh' OPTION; do
 	case "$OPTION" in
 		m)
